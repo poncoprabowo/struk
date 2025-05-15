@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Struk Belanja - Toko</title>
 
-  <!-- Manifest PWA -->
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#007BFF">
+  <!-- SheetJS untuk upload Excel -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js "></script>
 
   <style>
+    /* CSS sama seperti di file asli Anda */
     body {
       font-family: 'Courier New', Courier, monospace;
       font-size: 16px;
@@ -176,34 +176,29 @@
   <button onclick="generateStrukAlternatif()" style="background: #007BFF; color: white;">Tampilkan Struk Alternatif</button>
   <button id="printBtn" onclick="window.print()">🖨️ Cetak Struk</button>
 
-  <!-- Tombol Hubungkan & Cetak ke Printer Thermal -->
+  <!-- Tombol tambahan untuk cetak ke printer thermal -->
   <button onclick="connectPrinter()" style="background: #ff9800; color: white;">🔌 Hubungkan ke Printer</button>
-  <button onclick="printStrukToBluetooth()" style="background: #d32f2f; color: white;">🖨️ Cetak ke Printer Thermal</button>
+  <button onclick="printToThermalPrinter()" style="background: #d32f2f; color: white;">🖨️ Cetak ke POS-80</button>
 </div>
 
 <div class="struk-container" id="struk">
   <!-- Isi struk akan muncul di sini -->
 </div>
 
-<!-- SheetJS Library -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js "></script>
-
-<!-- ESC/POS Encoder -->
+<!-- ESC/POS Encoder untuk Web Bluetooth -->
 <script type="module">
 import EscPosEncoder from 'https://cdn.jsdelivr.net/npm/esc-pos-encoder/+esm ';
 
 let characteristic = null;
 
-// Fungsi: Hubungkan ke Printer Bluetooth
+// Fungsi: Hubungkan ke Printer Thermal via Bluetooth
 async function connectPrinter() {
     try {
-        console.log("Memulai pencarian perangkat...");
         const device = await navigator.bluetooth.requestDevice({
             acceptAllDevices: true,
             optionalServices: ['0000110a-0000-1000-8000-00805f9b34fb']
         });
 
-        console.log("Perangkat dipilih:", device.name);
         const server = await device.gatt.connect();
         const service = await server.getPrimaryService('0000110a-0000-1000-8000-00805f9b34fb');
         const chr = await service.getCharacteristic('0000110b-0000-1000-8000-00805f9b34fb');
@@ -212,12 +207,12 @@ async function connectPrinter() {
         alert("✅ Printer berhasil terhubung!");
     } catch (error) {
         console.error("Gagal terhubung ke printer:", error);
-        alert("❌ Gagal terhubung ke printer.\nPastikan:\n1. Printer nyala\n2. Sudah dipairing\n3. Gunakan Chrome Android");
+        alert("❌ Gagal terhubung ke printer.");
     }
 }
 
-// Fungsi: Kirim Data Struk ke Printer
-function printStrukToBluetooth() {
+// Fungsi: Kirim data ke printer thermal
+function printToThermalPrinter() {
     if (!characteristic) {
         alert("⚠️ Printer belum terhubung.");
         return;
@@ -226,6 +221,7 @@ function printStrukToBluetooth() {
     const toko = document.getElementById("toko").value || "Toko Serba Ada";
     const alamat = document.getElementById("alamat").value || "";
     const kasir = document.getElementById("kasir").value || "Kasir";
+    const now = new Date();
 
     let items = [];
     for (let i = 1; i <= itemCounter; i++) {
@@ -237,7 +233,7 @@ function printStrukToBluetooth() {
         }
     }
 
-    // Buat encoder ESC/POS
+    // Buat struk menggunakan ESC/POS
     const encoder = new EscPosEncoder();
     const result = encoder
         .initialize()
@@ -245,6 +241,7 @@ function printStrukToBluetooth() {
         .line(toko)
         .line(alamat)
         .line("Kasir: " + kasir)
+        .line(now.toLocaleString())
         .newline()
         .table([
             ["Barang", "Qty", "Harga"],
@@ -424,12 +421,15 @@ document.getElementById('excel').addEventListener('change', function (e) {
         const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
+
         document.getElementById("toko").value = sheet['B1']?.v || "";
         document.getElementById("alamat").value = sheet['B2']?.v || "";
         document.getElementById("kasir").value = sheet['B3']?.v || "";
+
         const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
         document.getElementById('belanjaan-list').innerHTML = '';
         itemCounter = 0;
+
         for (let i = 5; i < jsonData.length; i++) {
             const row = jsonData[i];
             if (row && row.length >= 3 && row[0] && row[1] !== undefined && row[2] !== undefined) {
@@ -438,20 +438,13 @@ document.getElementById('excel').addEventListener('change', function (e) {
                 setTimeout(() => {
                     document.getElementById(`barang-${idx}`).value = row[0];     // Barang
                     document.getElementById(`jumlah-${idx}`).value = row[1];    // Jumlah
-                    document.getElementById(`harga-${idx}`).value = row[2];     // Harga
+                    document.getElementById(`harga-${idx}`).value = row[2];    // Harga
                 }, 50);
             }
         }
     };
     reader.readAsArrayBuffer(file);
 });
-</script>
-
-<!-- Service Worker untuk Offline Support -->
-<script>
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(err => console.error(err));
-}
 </script>
 </body>
 </html>
