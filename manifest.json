@@ -1,11 +1,10 @@
 {
-  "name": "Struk Belanja PWA",
-  "short_name": "Struk Belanja",
-  "start_url": "./index.html",
+  "name": "Struk Belanja",
+  "short_name": "BelanjaStruk",
+  "start_url": "/index.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#007BFF",
-  "orientation": "portrait",
   "icons": [
     {
       "src": "icon-192.png",
