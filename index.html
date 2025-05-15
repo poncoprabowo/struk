@@ -141,6 +141,8 @@
       }
     }
   </style>
+
+  <script type="module" src="https://cdn.jsdelivr.net/npm/esc-pos-encoder/+esm "></script>
 </head>
 <body>
 <div class="form-container">
@@ -453,6 +455,81 @@ function printStrukToBluetooth() {
         .line(toko)
         .line(alamat)
         .line("Kasir: " + kasir)
+        .newline()
+        .table([
+            ["Barang", "Qty", "Harga"],
+            ...items.map(i => [i.nama, i.jumlah, i.harga]),
+        ])
+        .newline()
+        .text("----------------------------")
+        .newline()
+        .align('rt')
+        .text("Total: " + items.reduce((sum, i) => sum + (i.jumlah * i.harga), 0).toLocaleString())
+        .newline()
+        .cut()
+        .encode();
+
+    characteristic.writeValue(result.buffer.slice(0, 20));
+}
+</script>
+
+  <script type="module">
+import EscPosEncoder from 'https://cdn.jsdelivr.net/npm/esc-pos-encoder/+esm ';
+
+let characteristic = null;
+
+// Fungsi: Hubungkan ke Printer Bluetooth
+async function connectPrinter() {
+    try {
+        const device = await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: ['0000110a-0000-1000-8000-00805f9b34fb']
+        });
+
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService('0000110a-0000-1000-8000-00805f9b34fb');
+        const chr = await service.getCharacteristic('0000110b-0000-1000-8000-00805f9b34fb');
+
+        characteristic = chr;
+        alert("✅ Printer berhasil terhubung!");
+    } catch (error) {
+        console.error("Gagal terhubung ke printer:", error);
+        alert("❌ Gagal terhubung ke printer.");
+    }
+}
+
+// Fungsi: Kirim Data Struk ke Printer
+function printStrukToBluetooth() {
+    if (!characteristic) {
+        alert("⚠️ Printer belum terhubung.");
+        return;
+    }
+
+    const toko = document.getElementById("toko").value || "Toko Serba Ada";
+    const alamat = document.getElementById("alamat").value || "";
+    const kasir = document.getElementById("kasir").value || "Kasir";
+    const now = new Date();
+    const tanggal = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()}`;
+
+    let items = [];
+    for (let i = 1; i <= itemCounter; i++) {
+        const barang = document.getElementById(`barang-${i}`)?.value || '';
+        const jumlah = parseInt(document.getElementById(`jumlah-${i}`)?.value || 0);
+        const harga = parseInt(document.getElementById(`harga-${i}`)?.value || 0);
+        if (barang && jumlah > 0 && harga >= 0) {
+            items.push({ nama: barang, jumlah, harga });
+        }
+    }
+
+    // Buat encoder ESC/POS
+    const encoder = new EscPosEncoder();
+    const result = encoder
+        .initialize()
+        .align('ct')
+        .line(toko)
+        .line(alamat)
+        .line("Kasir: " + kasir)
+        .line(tanggal)
         .newline()
         .table([
             ["Barang", "Qty", "Harga"],
