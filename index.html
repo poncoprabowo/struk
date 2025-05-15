@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#007BFF">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Struk Belanja - Toko</title>
+  <style>
+    body {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 16px; /* Diperbesar */
+      font-weight: bold;
+      margin: 0;
+      padding: 10px;
+      background: #f4f4f4;
+      box-sizing: border-box;
+    }
+    .form-container {
+      margin-bottom: 20px;
+      background: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      width: 100%;
+      max-width: 600px;
+      margin: auto;
+      box-sizing: border-box;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    input[type="text"],
+    input[type="number"],
+    input[type="file"] {
+      width: 100%;
+      padding: 5px;
+      margin-top: 5px;
+      box-sizing: border-box;
+      font-size: 14px; /* Diperbesar */
+    }
+    button {
+      margin-top: 10px;
+      padding: 7px 12px;
+      font-size: 14px; /* Diperbesar */
+      cursor: pointer;
+      width: 100%;
+    }
+    .struk-container {
+      background: #fff;
+      width: 100%;
+      max-width: 58mm; /* Ukuran kertas thermal */
+      margin: 0 auto;
+      padding: 1mm 3mm;
+      box-shadow: 0 0 5px rgba(0,0,0,0.3);
+      box-sizing: border-box;
+      font-size: 14px; /* Diperbesar */
+    }
+    .center {
+      text-align: center;
+    }
+    .item-block {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .item-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .item-name {
+      flex: 1 1 60%;
+      word-break: break-word;
+    }
+    .line {
+      border-top: 1px dashed #000;
+      margin: 2px 0;
+    }
+    .total-line {
+      border-top: 2px solid #000;
+      margin: 4px 0;
+    }
+    .total-text {
+      font-size: 16px; /* Diperbesar */
+      font-weight: bold;
+      text-align: right;
+    }
+    #printBtn {
+      display: none;
+      margin: 10px auto;
+      background-color: #007BFF;
+      color: white;
+      width: 100%;
+    }
+
+    @media screen and (max-width: 600px) {
+      .struk-container {
+        font-size: 12px; /* Diperbesar */
+        padding: 2mm;
+      }
+      input[type="text"], input[type="number"] {
+        font-size: 14px;
+      }
+    }
+
+    @media print {
+      * {
+        visibility: hidden !important;
+      }
+      .struk-container,
+      .struk-container * {
+        visibility: visible !important;
+        position: relative;
+      }
+      .struk-container {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 56mm;
+        max-width: 56mm;
+        padding: 0mm 5mm;
+        font-size: 12px; /* Diperbesar */
+        page-break-after: always;
+        box-sizing: border-box;
+      }
+      .total-text {
+        font-size: 14px; /* Diperbesar */
+      }
+      h2 {
+        font-size: 14px; /* Diperbesar */
+      }
+      .center strong {
+        font-size: 14px; /* Diperbesar */
+      }
+      .item-row div {
+        font-size: 12px; /* Diperbesar */
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="form-container">
+  <h2>Input Data Struk Belanja</h2>
+  <label for="toko">Nama Toko:</label>
+  <input type="text" id="toko" placeholder="Masukkan nama toko">
+  <label for="alamat">Alamat Toko:</label>
+  <input type="text" id="alamat" placeholder="Masukkan alamat toko">
+  <label for="kasir">Nama Kasir:</label>
+  <input type="text" id="kasir" placeholder="Masukkan nama kasir">
+  <label for="excel">Upload Excel:</label>
+  <input type="file" id="excel" accept=".xlsx, .xls" />
+  <button onclick="downloadTemplate()" style="background: #4CAF50; color: white;">
+    📥 Download Template Excel
+  </button>
+  <div id="belanjaan-list"></div>
+  <button onclick="tambahBelanjaan()">Tambah Item</button>
+  <button onclick="generateStruk()" style="background: green; color: white;">Tampilkan Struk</button>
+  <button onclick="generateStrukAlternatif()" style="background: #007BFF; color: white;">Tampilkan Struk Alternatif</button>
+  <button id="printBtn" onclick="window.print()">🖨️ Cetak Struk</button>
+</div>
+
+<div class="struk-container" id="struk">
+  <!-- Isi struk akan muncul di sini -->
+</div>
+
+<!-- SheetJS Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js "></script>
+<script>
+  let itemCounter = 0;
+
+  function tambahBelanjaan() {
+    itemCounter++;
+    const list = document.getElementById('belanjaan-list');
+    const div = document.createElement('div');
+    div.id = `item-${itemCounter}`;
+    div.innerHTML = `
+      <hr>
+      <label>Barang ${itemCounter}:</label><br>
+      <input type="text" id="barang-${itemCounter}" placeholder="Nama barang">
+      <input type="number" id="jumlah-${itemCounter}" placeholder="Jumlah" min="1" style="width: 60px;">
+      <input type="number" id="harga-${itemCounter}" placeholder="Harga" min="0" style="width: 80px;">
+      <button onclick="hapusItem(${itemCounter})" style="color: red;">Hapus</button>
+    `;
+    list.appendChild(div);
+  }
+
+  function hapusItem(id) {
+    const el = document.getElementById(`item-${id}`);
+    if (el) el.remove();
+    itemCounter--;
+  }
+
+  function generateStruk() {
+    const toko = document.getElementById("toko").value || "Toko ABCD";
+    const alamat = document.getElementById("alamat").value || "Jl. Raya No.123";
+    const kasir = document.getElementById("kasir").value || "Kasir Tidak Diketahui";
+    const now = new Date();
+    const tanggal = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()}`;
+    let itemsHTML = '';
+    let total = 0;
+    for (let i = 1; i <= itemCounter; i++) {
+      const barangEl = document.getElementById(`barang-${i}`);
+      const jumlahEl = document.getElementById(`jumlah-${i}`);
+      const hargaEl = document.getElementById(`harga-${i}`);
+      if (!barangEl || !jumlahEl || !hargaEl) continue;
+      const barang = barangEl.value.trim();
+      const jumlah = parseInt(jumlahEl.value) || 0;
+      const harga = parseInt(hargaEl.value) || 0;
+      if (barang && jumlah > 0 && harga >= 0) {
+        const subtotal = jumlah * harga;
+        total += subtotal;
+        itemsHTML += `
+          <div class="item-block">
+            <div class="item-row">
+              <div class="item-name">${barang}</div>
+            </div>
+            <div class="item-row">
+              <div>${jumlah} x ${formatRupiah(harga)}</div>
+              <div><strong>${formatRupiah(subtotal)}</strong></div>
+            </div>
+            <div class="line"></div>
+          </div>
+        `;
+      }
+    }
+    // Total Keseluruhan
+    itemsHTML += `
+      <div class="total-line"></div>
+      <div class="total-text">Total: ${formatRupiah(total)}</div>
+      <div class="total-line"></div>
+    `;
+    const strukHTML = `
+      <div class="center">
+        <strong>${toko}</strong><br>
+        ${alamat}<br>
+        Kasir: ${kasir}<br>
+        Tgl: ${tanggal}<br>
+        ----------------------------
+      </div>
+      ${itemsHTML}
+      <div class="center">
+        Terima Kasih<br>
+        atas kunjungan Anda!
+      </div>
+    `;
+    document.getElementById('struk').innerHTML = strukHTML;
+    document.getElementById('printBtn').style.display = 'inline-block';
+  }
+
+  function generateStrukAlternatif() {
+    const toko = document.getElementById("toko").value || "Toko ABCD";
+    const alamat = document.getElementById("alamat").value || "Jl. Raya No.123";
+    const kasir = document.getElementById("kasir").value || "Kasir Tidak Diketahui";
+    const now = new Date();
+    const tanggal = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()}`;
+    let itemsHTML = '';
+    let total = 0;
+    for (let i = 1; i <= itemCounter; i++) {
+      const barangEl = document.getElementById(`barang-${i}`);
+      const jumlahEl = document.getElementById(`jumlah-${i}`);
+      const hargaEl = document.getElementById(`harga-${i}`);
+      if (!barangEl || !jumlahEl || !hargaEl) continue;
+      const barang = barangEl.value.trim();
+      const jumlah = parseInt(jumlahEl.value) || 0;
+      const harga = parseInt(hargaEl.value) || 0;
+      if (barang && jumlah > 0 && harga >= 0) {
+        const subtotal = jumlah * harga;
+        total += subtotal;
+        itemsHTML += `
+          <div class="item-block">
+            <div class="item-row">
+              <div class="item-name">${barang}</div>
+            </div>
+            <div class="item-row">
+              <div>${jumlah} </div>
+              <div><strong>${formatRupiah(subtotal)}</strong></div>
+            </div>
+            <div class="line"></div>
+          </div>
+        `;
+      }
+    }
+    // Total Keseluruhan
+    itemsHTML += `
+      <div class="total-line"></div>
+      <div class="total-text">Total: ${formatRupiah(total)}</div>
+      <div class="total-line"></div>
+    `;
+    const strukHTML = `
+      <div class="center">
+        ${toko}<br>
+        ${alamat}<br>
+        Kasir: ${kasir}<br>
+        Tanggal: ${tanggal}<br>
+        ========================
+      </div>
+      ${itemsHTML}
+      <div class="center">
+        Terima Kasih<br>
+        atas kunjungan Anda!
+      </div>
+    `;
+    document.getElementById('struk').innerHTML = strukHTML;
+    document.getElementById('printBtn').style.display = 'inline-block';
+  }
+
+  function formatRupiah(angka) {
+    return angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
+
+  function downloadTemplate() {
+    const wb = XLSX.utils.book_new();
+    const wsData = [
+      ["Nama Toko", "Toko Serba Ada"],
+      ["Alamat Toko", "Jl. Raya No.123"],
+      ["Nama Kasir", "Andi"],
+      [],
+      ["Barang", "Jumlah", "Harga"],
+      ["Roti Tawar Gandum Super Enak", "2", "12000"],
+      ["Susu Kotak Coklat Berkualitas Tinggi", "5", "5000"]
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws['!cols'] = [
+      {wch:20}, {wch:10}, {wch:12}
+    ];
+    XLSX.utils.book_append_sheet(wb, ws, "Struk");
+    XLSX.writeFile(wb, "template-struk-belanja.xlsx");
+  }
+
+  document.getElementById('excel').addEventListener('change', function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function (evt) {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      document.getElementById("toko").value = sheet['B1']?.v || "";
+      document.getElementById("alamat").value = sheet['B2']?.v || "";
+      document.getElementById("kasir").value = sheet['B3']?.v || "";
+      const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+      document.getElementById('belanjaan-list').innerHTML = '';
+      itemCounter = 0;
+      for (let i = 5; i < jsonData.length; i++) {
+        const row = jsonData[i];
+        if (row && row.length >= 3 && row[0] && row[1] !== undefined && row[2] !== undefined) {
+          tambahBelanjaan();
+          const idx = itemCounter;
+          setTimeout(() => {
+            document.getElementById(`barang-${idx}`).value = row[0];     // Barang
+            document.getElementById(`jumlah-${idx}`).value = row[1];    // Jumlah
+            document.getElementById(`harga-${idx}`).value = row[2];    // Harga
+          }, 50);
+        }
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+  
+  function sendToPrinter() {
+    const items = [];
+    for (let i = 1; i <= itemCounter; i++) {
+        const barang = document.getElementById(`barang-${i}`)?.value || '';
+        const jumlah = document.getElementById(`jumlah-${i}`)?.value || 0;
+        const harga = document.getElementById(`harga-${i}`)?.value || 0;
+        if (barang && jumlah > 0 && harga >= 0) {
+            items.push({ nama: barang, jumlah: parseInt(jumlah), harga: parseInt(harga) });
+        }
+    }
+
+    const toko = document.getElementById("toko").value || 'Toko Serba Ada';
+    const alamat = document.getElementById("alamat").value || '';
+    const kasir = document.getElementById("kasir").value || 'Kasir';
+
+    fetch('print_struk.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ toko, alamat, kasir, items })
+    }).then(res => res.json()).then(response => {
+        alert(response.message);
+    }).catch(err => {
+        alert("Gagal mengirim ke printer: " + err.message);
+    });
+}
+
+
+</script>
+
+</body>
+</html>
