@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Struk Belanja - Toko</title>
+    <style>
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+            font-weight: bold;
+            margin: 0;
+            padding: 10px;
+            background: #f4f4f4;
+        }
+        .form-container {
+            margin-bottom: 20px;
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 5px;
+            margin-top: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            margin-top: 10px;
+            padding: 7px 12px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .struk-container {
+            background: #fff;
+            width: 56mm;
+            margin: 0 auto;
+            padding: 1mm;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+        }
+        .center {
+            text-align: center;
+        }
+        table {
+            width: 95%;
+            table-layout: fixed;
+            word-wrap: break-word;
+            border-collapse: collapse;
+        }
+        td {
+            width: 50%;
+            vertical-align: top;
+        }
+        .line {
+            border-top: 1px dashed #000;
+            margin: 4px 0;
+        }
+        .right-aligned {
+            text-align: right;
+            width: 95%;
+        }
+        #printBtn {
+            display: none;
+            margin: 10px auto;
+            display: block;
+            background-color: #007BFF;
+            color: white;
+        }
+    </style>
+	
+	<style>
+    @media print {
+        .form-container, #printBtn {
+            display: none !important;
+        }
+        body {
+            background: white;
+        }
+        * {
+            visibility: hidden !important;
+        }
+        .struk-container, .struk-container * {
+            visibility: visible !important;
+        }
+        .struk-container {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 56mm;
+        }
+    }
+</style>
+</head>
+<body>
+
+<div class="form-container">
+    <h2>Input Data Struk Belanja</h2>
+    <label for="toko">Nama Toko:</label>
+    <input type="text" id="toko" placeholder="Masukkan nama toko">
+
+    <label for="alamat">Alamat Toko:</label>
+    <input type="text" id="alamat" placeholder="Masukkan alamat toko">
+
+    <label for="kasir">Nama Kasir:</label>
+    <input type="text" id="kasir" placeholder="Masukkan nama kasir">
+
+    <div id="belanjaan-list"></div>
+
+    <button onclick="tambahBelanjaan()">Tambah Item</button>
+    <button onclick="generateStruk()" style="background: green; color: white;">Tampilkan Struk</button>
+    <button id="printBtn" onclick="window.print()">🖨️ Cetak Struk</button>
+</div>
+
+<div class="struk-container" id="struk">
+    <!-- Isi struk akan muncul di sini -->
+</div>
+
+<script>
+    let itemCounter = 0;
+
+    function tambahBelanjaan() {
+        itemCounter++;
+        const list = document.getElementById('belanjaan-list');
+
+        const div = document.createElement('div');
+        div.id = `item-${itemCounter}`;
+        div.innerHTML = `
+            <hr>
+            <label>Barang ${itemCounter}:</label><br>
+            <input type="text" id="barang-${itemCounter}" placeholder="Nama barang">
+            <input type="number" id="jumlah-${itemCounter}" placeholder="Jumlah" min="1" style="width: 60px;">
+            <input type="number" id="harga-${itemCounter}" placeholder="Harga" min="0" style="width: 80px;">
+            <button onclick="hapusItem(${itemCounter})" style="color: red;">Hapus</button>
+        `;
+        list.appendChild(div);
+    }
+
+    function hapusItem(id) {
+        const el = document.getElementById(`item-${id}`);
+        if (el) el.remove();
+    }
+
+    function generateStruk() {
+        const toko = document.getElementById("toko").value || "Toko ABCD";
+        const alamat = document.getElementById("alamat").value || "Jl. Raya No.123";
+        const kasir = document.getElementById("kasir").value || "Kasir Tidak Diketahui";
+        const now = new Date();
+        const tanggal = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()}`;
+
+        let itemsHTML = '';
+        let total = 0;
+
+        for (let i = 1; i <= itemCounter; i++) {
+            const barangEl = document.getElementById(`barang-${i}`);
+            const jumlahEl = document.getElementById(`jumlah-${i}`);
+            const hargaEl = document.getElementById(`harga-${i}`);
+
+            if (!barangEl || !jumlahEl || !hargaEl) continue;
+
+            const barang = barangEl.value.trim();
+            const jumlah = parseInt(jumlahEl.value) || 0;
+            const harga = parseInt(hargaEl.value) || 0;
+
+            if (barang && jumlah > 0 && harga >= 0) {
+                const subtotal = jumlah * harga;
+                total += subtotal;
+                itemsHTML += `
+                    <tr>
+                        <td>${barang.slice(0, 12)}</td>
+                        <td style="text-align:right">${jumlah} x ${formatRupiah(harga)}</td>
+                    </tr>`;
+            }
+        }
+
+        const strukHTML = `
+            <div class="center">
+                <strong>${toko}</strong><br>
+                ${alamat}<br>
+                Kasir: ${kasir}<br>
+                Tgl: ${tanggal}<br>
+                ----------------------------
+            </div>
+            <table>
+                ${itemsHTML}
+            </table>
+            <div class="line"></div>
+            <div class="right-aligned">
+                <strong>Total: ${formatRupiah(total)}</strong>
+            </div>
+            <div class="line"></div>
+            <div class="center">
+                Trimakasih!<br>
+                Datang lagi ya!
+            </div>
+            <br><br><br><br>
+        `;
+
+        document.getElementById('struk').innerHTML = strukHTML;
+        document.getElementById('printBtn').style.display = 'inline-block';
+    }
+
+    function formatRupiah(angka) {
+        return angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+</script>
+
+</body>
+</html>
