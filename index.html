@@ -1,23 +1,25 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#007BFF">
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#007BFF">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Struk Belanja - Toko</title>
+
+  <!-- Manifest PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#007BFF">
+
   <style>
     body {
       font-family: 'Courier New', Courier, monospace;
-      font-size: 16px; /* Diperbesar */
+      font-size: 16px;
       font-weight: bold;
       margin: 0;
       padding: 10px;
       background: #f4f4f4;
       box-sizing: border-box;
     }
+
     .form-container {
       margin-bottom: 20px;
       background: #fff;
@@ -28,11 +30,13 @@
       margin: auto;
       box-sizing: border-box;
     }
+
     label {
       display: block;
       margin-top: 10px;
       font-weight: bold;
     }
+
     input[type="text"],
     input[type="number"],
     input[type="file"] {
@@ -40,55 +44,65 @@
       padding: 5px;
       margin-top: 5px;
       box-sizing: border-box;
-      font-size: 14px; /* Diperbesar */
+      font-size: 14px;
     }
+
     button {
       margin-top: 10px;
       padding: 7px 12px;
-      font-size: 14px; /* Diperbesar */
+      font-size: 14px;
       cursor: pointer;
       width: 100%;
     }
+
     .struk-container {
       background: #fff;
       width: 100%;
-      max-width: 58mm; /* Ukuran kertas thermal */
+      max-width: 58mm;
       margin: 0 auto;
       padding: 1mm 3mm;
       box-shadow: 0 0 5px rgba(0,0,0,0.3);
       box-sizing: border-box;
-      font-size: 14px; /* Diperbesar */
+      font-size: 14px;
     }
+
     .center {
       text-align: center;
     }
+
     .item-block {
       display: flex;
       flex-direction: column;
       gap: 2px;
     }
+
     .item-row {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
     }
+
     .item-name {
       flex: 1 1 60%;
       word-break: break-word;
     }
+
     .line {
       border-top: 1px dashed #000;
       margin: 2px 0;
     }
+
     .total-line {
       border-top: 2px solid #000;
       margin: 4px 0;
     }
+
     .total-text {
-      font-size: 16px; /* Diperbesar */
+      font-size: 16px;
       font-weight: bold;
       text-align: right;
     }
+
     #printBtn {
       display: none;
       margin: 10px auto;
@@ -99,7 +113,7 @@
 
     @media screen and (max-width: 600px) {
       .struk-container {
-        font-size: 12px; /* Diperbesar */
+        font-size: 12px;
         padding: 2mm;
       }
       input[type="text"], input[type="number"] {
@@ -123,26 +137,24 @@
         width: 56mm;
         max-width: 56mm;
         padding: 0mm 5mm;
-        font-size: 12px; /* Diperbesar */
+        font-size: 12px;
         page-break-after: always;
         box-sizing: border-box;
       }
       .total-text {
-        font-size: 14px; /* Diperbesar */
+        font-size: 14px;
       }
       h2 {
-        font-size: 14px; /* Diperbesar */
+        font-size: 14px;
       }
       .center strong {
-        font-size: 14px; /* Diperbesar */
+        font-size: 14px;
       }
       .item-row div {
-        font-size: 12px; /* Diperbesar */
+        font-size: 12px;
       }
     }
   </style>
-
-  <script type="module" src="https://cdn.jsdelivr.net/npm/esc-pos-encoder/+esm "></script>
 </head>
 <body>
 <div class="form-container">
@@ -162,9 +174,11 @@
   <button onclick="tambahBelanjaan()">Tambah Item</button>
   <button onclick="generateStruk()" style="background: green; color: white;">Tampilkan Struk</button>
   <button onclick="generateStrukAlternatif()" style="background: #007BFF; color: white;">Tampilkan Struk Alternatif</button>
-  <button onclick="connectPrinter()" style="background: #ff9800; color: white;">🔌 Hubungkan ke Printer</button>
-<button onclick="printStrukToBluetooth()" style="background: #d32f2f; color: white;">🖨️ Cetak ke Printer</button>
   <button id="printBtn" onclick="window.print()">🖨️ Cetak Struk</button>
+
+  <!-- Tombol Hubungkan & Cetak ke Printer Thermal -->
+  <button onclick="connectPrinter()" style="background: #ff9800; color: white;">🔌 Hubungkan ke Printer</button>
+  <button onclick="printStrukToBluetooth()" style="background: #d32f2f; color: white;">🖨️ Cetak ke Printer Thermal</button>
 </div>
 
 <div class="struk-container" id="struk">
@@ -173,10 +187,86 @@
 
 <!-- SheetJS Library -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js "></script>
-<script>
-  let itemCounter = 0;
 
-  function tambahBelanjaan() {
+<!-- ESC/POS Encoder -->
+<script type="module">
+import EscPosEncoder from 'https://cdn.jsdelivr.net/npm/esc-pos-encoder/+esm ';
+
+let characteristic = null;
+
+// Fungsi: Hubungkan ke Printer Bluetooth
+async function connectPrinter() {
+    try {
+        console.log("Memulai pencarian perangkat...");
+        const device = await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: ['0000110a-0000-1000-8000-00805f9b34fb']
+        });
+
+        console.log("Perangkat dipilih:", device.name);
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService('0000110a-0000-1000-8000-00805f9b34fb');
+        const chr = await service.getCharacteristic('0000110b-0000-1000-8000-00805f9b34fb');
+
+        characteristic = chr;
+        alert("✅ Printer berhasil terhubung!");
+    } catch (error) {
+        console.error("Gagal terhubung ke printer:", error);
+        alert("❌ Gagal terhubung ke printer.\nPastikan:\n1. Printer nyala\n2. Sudah dipairing\n3. Gunakan Chrome Android");
+    }
+}
+
+// Fungsi: Kirim Data Struk ke Printer
+function printStrukToBluetooth() {
+    if (!characteristic) {
+        alert("⚠️ Printer belum terhubung.");
+        return;
+    }
+
+    const toko = document.getElementById("toko").value || "Toko Serba Ada";
+    const alamat = document.getElementById("alamat").value || "";
+    const kasir = document.getElementById("kasir").value || "Kasir";
+
+    let items = [];
+    for (let i = 1; i <= itemCounter; i++) {
+        const barang = document.getElementById(`barang-${i}`)?.value || '';
+        const jumlah = parseInt(document.getElementById(`jumlah-${i}`)?.value || 0);
+        const harga = parseInt(document.getElementById(`harga-${i}`)?.value || 0);
+        if (barang && jumlah > 0 && harga >= 0) {
+            items.push({ nama: barang, jumlah, harga });
+        }
+    }
+
+    // Buat encoder ESC/POS
+    const encoder = new EscPosEncoder();
+    const result = encoder
+        .initialize()
+        .align('ct')
+        .line(toko)
+        .line(alamat)
+        .line("Kasir: " + kasir)
+        .newline()
+        .table([
+            ["Barang", "Qty", "Harga"],
+            ...items.map(i => [i.nama, i.jumlah, i.harga]),
+        ])
+        .newline()
+        .text("----------------------------")
+        .newline()
+        .align('rt')
+        .text("Total: " + items.reduce((sum, i) => sum + (i.jumlah * i.harga), 0).toLocaleString())
+        .newline()
+        .cut()
+        .encode();
+
+    characteristic.writeValue(result.buffer.slice(0, 20));
+}
+</script>
+
+<script>
+let itemCounter = 0;
+
+function tambahBelanjaan() {
     itemCounter++;
     const list = document.getElementById('belanjaan-list');
     const div = document.createElement('div');
@@ -190,15 +280,15 @@
       <button onclick="hapusItem(${itemCounter})" style="color: red;">Hapus</button>
     `;
     list.appendChild(div);
-  }
+}
 
-  function hapusItem(id) {
+function hapusItem(id) {
     const el = document.getElementById(`item-${id}`);
     if (el) el.remove();
     itemCounter--;
-  }
+}
 
-  function generateStruk() {
+function generateStruk() {
     const toko = document.getElementById("toko").value || "Toko ABCD";
     const alamat = document.getElementById("alamat").value || "Jl. Raya No.123";
     const kasir = document.getElementById("kasir").value || "Kasir Tidak Diketahui";
@@ -207,31 +297,26 @@
     let itemsHTML = '';
     let total = 0;
     for (let i = 1; i <= itemCounter; i++) {
-      const barangEl = document.getElementById(`barang-${i}`);
-      const jumlahEl = document.getElementById(`jumlah-${i}`);
-      const hargaEl = document.getElementById(`harga-${i}`);
-      if (!barangEl || !jumlahEl || !hargaEl) continue;
-      const barang = barangEl.value.trim();
-      const jumlah = parseInt(jumlahEl.value) || 0;
-      const harga = parseInt(hargaEl.value) || 0;
-      if (barang && jumlah > 0 && harga >= 0) {
-        const subtotal = jumlah * harga;
-        total += subtotal;
-        itemsHTML += `
-          <div class="item-block">
-            <div class="item-row">
-              <div class="item-name">${barang}</div>
-            </div>
-            <div class="item-row">
-              <div>${jumlah} x ${formatRupiah(harga)}</div>
-              <div><strong>${formatRupiah(subtotal)}</strong></div>
-            </div>
-            <div class="line"></div>
-          </div>
-        `;
-      }
+        const barang = document.getElementById(`barang-${i}`)?.value || '';
+        const jumlah = parseInt(document.getElementById(`jumlah-${i}`)?.value || 0);
+        const harga = parseInt(document.getElementById(`harga-${i}`)?.value || 0);
+        if (barang && jumlah > 0 && harga >= 0) {
+            const subtotal = jumlah * harga;
+            total += subtotal;
+            itemsHTML += `
+              <div class="item-block">
+                <div class="item-row">
+                  <div class="item-name">${barang}</div>
+                </div>
+                <div class="item-row">
+                  <div>${jumlah} x ${formatRupiah(harga)}</div>
+                  <div><strong>= ${formatRupiah(subtotal)}</strong></div>
+                </div>
+                <div class="line"></div>
+              </div>
+            `;
+        }
     }
-    // Total Keseluruhan
     itemsHTML += `
       <div class="total-line"></div>
       <div class="total-text">Total: ${formatRupiah(total)}</div>
@@ -253,9 +338,9 @@
     `;
     document.getElementById('struk').innerHTML = strukHTML;
     document.getElementById('printBtn').style.display = 'inline-block';
-  }
+}
 
-  function generateStrukAlternatif() {
+function generateStrukAlternatif() {
     const toko = document.getElementById("toko").value || "Toko ABCD";
     const alamat = document.getElementById("alamat").value || "Jl. Raya No.123";
     const kasir = document.getElementById("kasir").value || "Kasir Tidak Diketahui";
@@ -264,31 +349,26 @@
     let itemsHTML = '';
     let total = 0;
     for (let i = 1; i <= itemCounter; i++) {
-      const barangEl = document.getElementById(`barang-${i}`);
-      const jumlahEl = document.getElementById(`jumlah-${i}`);
-      const hargaEl = document.getElementById(`harga-${i}`);
-      if (!barangEl || !jumlahEl || !hargaEl) continue;
-      const barang = barangEl.value.trim();
-      const jumlah = parseInt(jumlahEl.value) || 0;
-      const harga = parseInt(hargaEl.value) || 0;
-      if (barang && jumlah > 0 && harga >= 0) {
-        const subtotal = jumlah * harga;
-        total += subtotal;
-        itemsHTML += `
-          <div class="item-block">
-            <div class="item-row">
-              <div class="item-name">${barang}</div>
-            </div>
-            <div class="item-row">
-              <div>${jumlah} </div>
-              <div><strong>${formatRupiah(subtotal)}</strong></div>
-            </div>
-            <div class="line"></div>
-          </div>
-        `;
-      }
+        const barang = document.getElementById(`barang-${i}`)?.value || '';
+        const jumlah = parseInt(document.getElementById(`jumlah-${i}`)?.value || 0);
+        const harga = parseInt(document.getElementById(`harga-${i}`)?.value || 0);
+        if (barang && jumlah > 0 && harga >= 0) {
+            const subtotal = jumlah * harga;
+            total += subtotal;
+            itemsHTML += `
+              <div class="item-block">
+                <div class="item-row">
+                  <div class="item-name">${barang}</div>
+                </div>
+                <div class="item-row">
+                  <div>${jumlah} x ${formatRupiah(harga)}</div>
+                  <div><strong>${formatRupiah(subtotal)}</strong></div>
+                </div>
+                <div class="line"></div>
+              </div>
+            `;
+        }
     }
-    // Total Keseluruhan
     itemsHTML += `
       <div class="total-line"></div>
       <div class="total-text">Total: ${formatRupiah(total)}</div>
@@ -310,169 +390,67 @@
     `;
     document.getElementById('struk').innerHTML = strukHTML;
     document.getElementById('printBtn').style.display = 'inline-block';
-  }
+}
 
-  function formatRupiah(angka) {
+function formatRupiah(angka) {
     return angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  }
+}
 
-  function downloadTemplate() {
+function downloadTemplate() {
     const wb = XLSX.utils.book_new();
     const wsData = [
-      ["Nama Toko", "Toko Serba Ada"],
-      ["Alamat Toko", "Jl. Raya No.123"],
-      ["Nama Kasir", "Andi"],
-      [],
-      ["Barang", "Jumlah", "Harga"],
-      ["Roti Tawar Gandum Super Enak", "2", "12000"],
-      ["Susu Kotak Coklat Berkualitas Tinggi", "5", "5000"]
+        ["Nama Toko", "Toko Serba Ada"],
+        ["Alamat Toko", "Jl. Raya No.123"],
+        ["Nama Kasir", "Andi"],
+        [],
+        ["Barang", "Jumlah", "Harga"],
+        ["Roti Tawar", "2", "12000"],
+        ["Susu Kotak", "5", "5000"]
     ];
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     ws['!cols'] = [
-      {wch:20}, {wch:10}, {wch:12}
+        {wch:20}, {wch:10}, {wch:12}
     ];
     XLSX.utils.book_append_sheet(wb, ws, "Struk");
     XLSX.writeFile(wb, "template-struk-belanja.xlsx");
-  }
+}
 
-  document.getElementById('excel').addEventListener('change', function (e) {
+document.getElementById('excel').addEventListener('change', function (e) {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = function (evt) {
-      const data = new Uint8Array(evt.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
-      const sheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[sheetName];
-      document.getElementById("toko").value = sheet['B1']?.v || "";
-      document.getElementById("alamat").value = sheet['B2']?.v || "";
-      document.getElementById("kasir").value = sheet['B3']?.v || "";
-      const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-      document.getElementById('belanjaan-list').innerHTML = '';
-      itemCounter = 0;
-      for (let i = 5; i < jsonData.length; i++) {
-        const row = jsonData[i];
-        if (row && row.length >= 3 && row[0] && row[1] !== undefined && row[2] !== undefined) {
-          tambahBelanjaan();
-          const idx = itemCounter;
-          setTimeout(() => {
-            document.getElementById(`barang-${idx}`).value = row[0];     // Barang
-            document.getElementById(`jumlah-${idx}`).value = row[1];    // Jumlah
-            document.getElementById(`harga-${idx}`).value = row[2];    // Harga
-          }, 50);
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        document.getElementById("toko").value = sheet['B1']?.v || "";
+        document.getElementById("alamat").value = sheet['B2']?.v || "";
+        document.getElementById("kasir").value = sheet['B3']?.v || "";
+        const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        document.getElementById('belanjaan-list').innerHTML = '';
+        itemCounter = 0;
+        for (let i = 5; i < jsonData.length; i++) {
+            const row = jsonData[i];
+            if (row && row.length >= 3 && row[0] && row[1] !== undefined && row[2] !== undefined) {
+                tambahBelanjaan();
+                const idx = itemCounter;
+                setTimeout(() => {
+                    document.getElementById(`barang-${idx}`).value = row[0];     // Barang
+                    document.getElementById(`jumlah-${idx}`).value = row[1];    // Jumlah
+                    document.getElementById(`harga-${idx}`).value = row[2];     // Harga
+                }, 50);
+            }
         }
-      }
     };
     reader.readAsArrayBuffer(file);
-  });
-  
-  function sendToPrinter() {
-    const items = [];
-    for (let i = 1; i <= itemCounter; i++) {
-        const barang = document.getElementById(`barang-${i}`)?.value || '';
-        const jumlah = document.getElementById(`jumlah-${i}`)?.value || 0;
-        const harga = document.getElementById(`harga-${i}`)?.value || 0;
-        if (barang && jumlah > 0 && harga >= 0) {
-            items.push({ nama: barang, jumlah: parseInt(jumlah), harga: parseInt(harga) });
-        }
-    }
-
-    const toko = document.getElementById("toko").value || 'Toko Serba Ada';
-    const alamat = document.getElementById("alamat").value || '';
-    const kasir = document.getElementById("kasir").value || 'Kasir';
-
-    fetch('print_struk.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ toko, alamat, kasir, items })
-    }).then(res => res.json()).then(response => {
-        alert(response.message);
-    }).catch(err => {
-        alert("Gagal mengirim ke printer: " + err.message);
-    });
-}
-
-
+});
 </script>
+
+<!-- Service Worker untuk Offline Support -->
 <script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js');
-  }
-</script>
-
-
-  <script type="module">
-import EscPosEncoder from 'https://cdn.jsdelivr.net/npm/esc-pos-encoder/+esm ';
-
-let characteristic = null;
-
-// Fungsi: Hubungkan ke Printer Bluetooth
-async function connectPrinter() {
-    try {
-        const device = await navigator.bluetooth.requestDevice({
-            acceptAllDevices: true,
-            optionalServices: ['0000110a-0000-1000-8000-00805f9b34fb']
-        });
-
-        const server = await device.gatt.connect();
-        const service = await server.getPrimaryService('0000110a-0000-1000-8000-00805f9b34fb');
-        const chr = await service.getCharacteristic('0000110b-0000-1000-8000-00805f9b34fb');
-
-        characteristic = chr;
-        alert("✅ Printer berhasil terhubung!");
-    } catch (error) {
-        console.error("Gagal terhubung ke printer:", error);
-        alert("❌ Gagal terhubung ke printer.");
-    }
-}
-
-// Fungsi: Kirim Data Struk ke Printer
-function printStrukToBluetooth() {
-    if (!characteristic) {
-        alert("⚠️ Printer belum terhubung.");
-        return;
-    }
-
-    const toko = document.getElementById("toko").value || "Toko Serba Ada";
-    const alamat = document.getElementById("alamat").value || "";
-    const kasir = document.getElementById("kasir").value || "Kasir";
-    const now = new Date();
-    const tanggal = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()}`;
-
-    let items = [];
-    for (let i = 1; i <= itemCounter; i++) {
-        const barang = document.getElementById(`barang-${i}`)?.value || '';
-        const jumlah = parseInt(document.getElementById(`jumlah-${i}`)?.value || 0);
-        const harga = parseInt(document.getElementById(`harga-${i}`)?.value || 0);
-        if (barang && jumlah > 0 && harga >= 0) {
-            items.push({ nama: barang, jumlah, harga });
-        }
-    }
-
-    // Buat encoder ESC/POS
-    const encoder = new EscPosEncoder();
-    const result = encoder
-        .initialize()
-        .align('ct')
-        .line(toko)
-        .line(alamat)
-        .line("Kasir: " + kasir)
-        .line(tanggal)
-        .newline()
-        .table([
-            ["Barang", "Qty", "Harga"],
-            ...items.map(i => [i.nama, i.jumlah, i.harga]),
-        ])
-        .newline()
-        .text("----------------------------")
-        .newline()
-        .align('rt')
-        .text("Total: " + items.reduce((sum, i) => sum + (i.jumlah * i.harga), 0).toLocaleString())
-        .newline()
-        .cut()
-        .encode();
-
-    characteristic.writeValue(result.buffer.slice(0, 20));
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(err => console.error(err));
 }
 </script>
 </body>
