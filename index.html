@@ -6,6 +6,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Struk Belanja - Toko</title>
+
+  <!-- Tambahkan library jsPDF dan html2canvas -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js "></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js "></script>
+
   <style>
     body {
       font-family: 'Courier New', Courier, monospace;
@@ -88,7 +93,7 @@
       font-weight: bold;
       text-align: right;
     }
-    #printBtn {
+    #printBtn, #savePdfBtn {
       display: none;
       margin: 10px auto;
       background-color: #007BFF;
@@ -140,7 +145,6 @@
   </style>
 </head>
 <body>
-
 <div class="form-container">
   <h2>Input Data Struk Belanja</h2>
   <label for="toko">Nama Toko:</label>
@@ -159,256 +163,196 @@
   <button onclick="generateStruk()" style="background: green; color: white;">Tampilkan Struk</button>
   <button onclick="generateStrukAlternatif()" style="background: #007BFF; color: white;">Tampilkan Struk Alternatif</button>
   <button id="printBtn" onclick="window.print()">🖨️ Cetak Struk</button>
+  <button id="savePdfBtn" onclick="saveStrukToPDF()">💾 Simpan PDF</button>
 </div>
-
 <div class="struk-container" id="struk">
   <!-- Isi struk akan muncul di sini -->
 </div>
 
 <!-- SheetJS Library -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js "></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js  "></script>
 <script>
-  let itemCounter = 0;
+let itemCounter = 0;
 
-  function getFormattedDate(date) {
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0'); // bulan dimulai dari 0
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-  }
+function getFormattedDate(date) {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0'); // bulan dimulai dari 0
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+}
 
-  function tambahBelanjaan() {
-    itemCounter++;
-    const list = document.getElementById('belanjaan-list');
-    const div = document.createElement('div');
-    div.id = `item-${itemCounter}`;
-    div.innerHTML = `
-      <hr>
-      <label>Barang ${itemCounter}:</label><br>
-      <input type="text" id="barang-${itemCounter}" placeholder="Nama barang">
-      <input type="number" id="jumlah-${itemCounter}" placeholder="Jumlah" min="1" style="width: 60px;">
-      <input type="number" id="harga-${itemCounter}" placeholder="Harga" min="0" style="width: 80px;">
-      <button onclick="hapusItem(${itemCounter})" style="color: red;">Hapus</button>
-    `;
-    list.appendChild(div);
-  }
-
-  function hapusItem(id) {
-    const el = document.getElementById(`item-${id}`);
-    if (el) el.remove();
-    itemCounter--;
-  }
-
-  function generateStruk() {
-    const toko = document.getElementById("toko").value || "Toko ABCD";
-    const alamat = document.getElementById("alamat").value || "Jl. Raya No.123";
-    const kasir = document.getElementById("kasir").value || "Kasir Tidak Diketahui";
-
-    const tanggalInput = document.getElementById("tanggal").value;
-    let tanggal;
-    if (tanggalInput) {
-      const [year, month, day] = tanggalInput.split('-');
-      tanggal = `${day}/${month}/${year}`;
-    } else {
-      const now = new Date();
-      tanggal = getFormattedDate(now);
-    }
-
-    let itemsHTML = '';
-    let total = 0;
-
-    for (let i = 1; i <= itemCounter; i++) {
-      const barangEl = document.getElementById(`barang-${i}`);
-      const jumlahEl = document.getElementById(`jumlah-${i}`);
-      const hargaEl = document.getElementById(`harga-${i}`);
-      if (!barangEl || !jumlahEl || !hargaEl) continue;
-      const barang = barangEl.value.trim();
-      const jumlah = parseInt(jumlahEl.value) || 0;
-      const harga = parseInt(hargaEl.value) || 0;
-      if (barang && jumlah > 0 && harga >= 0) {
-        const subtotal = jumlah * harga;
-        total += subtotal;
-        itemsHTML += `
-          <div class="item-block">
-            <div class="item-row">
-              <div class="item-name">${barang}</div>
-            </div>
-            <div class="item-row">
-              <div>${jumlah} x ${formatRupiah(harga)}</div>
-              <div><strong>${formatRupiah(subtotal)}</strong></div>
-            </div>
-            <div class="line"></div>
-          </div>
-        `;
-      }
-    }
-
-    itemsHTML += `
-      <div class="total-line"></div>
-      <div class="total-text">Total: ${formatRupiah(total)}</div>
-      <div class="total-line"></div>
-    `;
-
-    const strukHTML = `
-      <div class="center">
-        <strong>${toko}</strong><br>
-        ${alamat}<br>
-        Kasir: ${kasir}<br>
-        Tgl: ${tanggal}<br>
-        ----------------------------
-      </div>
-      ${itemsHTML}
-      <div class="center">
-        Terima Kasih<br>
-        atas kunjungan Anda!
-      </div>
-    `;
-
-    document.getElementById('struk').innerHTML = strukHTML;
-    document.getElementById('printBtn').style.display = 'inline-block';
-  }
-
-  function generateStrukAlternatif() {
-    const toko = document.getElementById("toko").value || "Toko ABCD";
-    const alamat = document.getElementById("alamat").value || "Jl. Raya No.123";
-    const kasir = document.getElementById("kasir").value || "Kasir Tidak Diketahui";
-
-    const tanggalInput = document.getElementById("tanggal").value;
-    let tanggal;
-    if (tanggalInput) {
-      const [year, month, day] = tanggalInput.split('-');
-      tanggal = `${day}/${month}/${year}`;
-    } else {
-      const now = new Date();
-      tanggal = getFormattedDate(now);
-    }
-
-    let itemsHTML = '';
-    let total = 0;
-
-    for (let i = 1; i <= itemCounter; i++) {
-      const barangEl = document.getElementById(`barang-${i}`);
-      const jumlahEl = document.getElementById(`jumlah-${i}`);
-      const hargaEl = document.getElementById(`harga-${i}`);
-      if (!barangEl || !jumlahEl || !hargaEl) continue;
-      const barang = barangEl.value.trim();
-      const jumlah = parseInt(jumlahEl.value) || 0;
-      const harga = parseInt(hargaEl.value) || 0;
-      if (barang && jumlah > 0 && harga >= 0) {
-        const subtotal = jumlah * harga;
-        total += subtotal;
-        itemsHTML += `
-          <div class="item-block">
-            <div class="item-row">
-              <div class="item-name">${barang}</div>
-            </div>
-            <div class="item-row">
-              <div>${jumlah}</div>
-              <div><strong>${formatRupiah(subtotal)}</strong></div>
-            </div>
-            <div class="line"></div>
-          </div>
-        `;
-      }
-    }
-
-    itemsHTML += `
-      <div class="total-line"></div>
-      <div class="total-text">Total: ${formatRupiah(total)}</div>
-      <div class="total-line"></div>
-    `;
-
-    const strukHTML = `
-      <div class="center">
-        ${toko}<br>
-        ${alamat}<br>
-        Kasir: ${kasir}<br>
-        Tanggal: ${tanggal}<br>
-        ========================
-      </div>
-      ${itemsHTML}
-      <div class="center">
-        Terima Kasih<br>
-        atas kunjungan Anda!
-      </div>
-    `;
-
-    document.getElementById('struk').innerHTML = strukHTML;
-    document.getElementById('printBtn').style.display = 'inline-block';
-  }
-
-  function formatRupiah(angka) {
-    return angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  }
-
-  function downloadTemplate() {
+function tambahBelanjaan() {
+  itemCounter++;
+  const list = document.getElementById('belanjaan-list');
+  const div = document.createElement('div');
+  div.id = `item-${itemCounter}`;
+  div.innerHTML = `
+    <hr>
+    <label>Barang ${itemCounter}:</label><br>
+    <input type="text" id="barang-${itemCounter}" placeholder="Nama barang">
+    <input type="number" id="jumlah-${itemCounter}" placeholder="Jumlah" min="1" style="width: 60px;">
+    <input type="number" id="harga-${itemCounter}" placeholder="Harga" min="0" style="width: 80px;">
+    <button onclick="hapusItem(${itemCounter})" style="color: red;">Hapus</button>
+  `;
+  list.appendChild(div);
+}
+function hapusItem(id) {
+  const el = document.getElementById(`item-${id}`);
+  if (el) el.remove();
+  itemCounter--;
+}
+function generateStruk() {
+  const toko = document.getElementById("toko").value || "Toko ABCD";
+  const alamat = document.getElementById("alamat").value || "Jl. Raya No.123";
+  const kasir = document.getElementById("kasir").value || "Kasir Tidak Diketahui";
+  const tanggalInput = document.getElementById("tanggal").value;
+  let tanggal;
+  if (tanggalInput) {
+    const [year, month, day] = tanggalInput.split('-');
+    tanggal = `${day}/${month}/${year}`;
+  } else {
     const now = new Date();
-    const defaultDate = getFormattedDate(now); // dd/mm/yyyy
-
-    const wb = XLSX.utils.book_new();
-    const wsData = [
-      ["Nama Toko", "Toko Serba Ada"],
-      ["Alamat Toko", "Jl. Raya No.123"],
-      ["Nama Kasir", "Andi"],
-      ["Tanggal", defaultDate],
-      [],
-      ["Barang", "Jumlah", "Harga"],
-      ["Roti Tawar Gandum Super Enak", "2", "12000"],
-      ["Susu Kotak Coklat Berkualitas Tinggi", "5", "5000"]
-    ];
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-    ws['!cols'] = [{wch:20}, {wch:10}, {wch:12}];
-    XLSX.utils.book_append_sheet(wb, ws, "Struk");
-    XLSX.writeFile(wb, "template-struk-belanja.xlsx");
+    tanggal = getFormattedDate(now);
   }
+  let itemsHTML = '';
+  let total = 0;
+  for (let i = 1; i <= itemCounter; i++) {
+    const barangEl = document.getElementById(`barang-${i}`);
+    const jumlahEl = document.getElementById(`jumlah-${i}`);
+    const hargaEl = document.getElementById(`harga-${i}`);
+    if (!barangEl || !jumlahEl || !hargaEl) continue;
+    const barang = barangEl.value.trim();
+    const jumlah = parseInt(jumlahEl.value) || 0;
+    const harga = parseInt(hargaEl.value) || 0;
+    if (barang && jumlah > 0 && harga >= 0) {
+      const subtotal = jumlah * harga;
+      total += subtotal;
+      itemsHTML += `
+        <div class="item-block">
+          <div class="item-row">
+            <div class="item-name">${barang}</div>
+          </div>
+          <div class="item-row">
+            <div>${jumlah} x ${formatRupiah(harga)}</div>
+            <div><strong>${formatRupiah(subtotal)}</strong></div>
+          </div>
+          <div class="line"></div>
+        </div>
+      `;
+    }
+  }
+  itemsHTML += `
+    <div class="total-line"></div>
+    <div class="total-text">Total: ${formatRupiah(total)}</div>
+    <div class="total-line"></div>
+  `;
+  const strukHTML = `
+    <div class="center">
+      <strong>${toko}</strong><br>
+      ${alamat}<br>
+      Kasir: ${kasir}<br>
+      Tgl: ${tanggal}<br>
+      ----------------------------
+    </div>
+    ${itemsHTML}
+    <div class="center">
+      Terima Kasih<br>
+      atas kunjungan Anda!
+    </div>
+  `;
+  document.getElementById('struk').innerHTML = strukHTML;
+  document.getElementById('printBtn').style.display = 'inline-block';
+  document.getElementById('savePdfBtn').style.display = 'inline-block';
+}
 
-  document.getElementById('excel').addEventListener('change', function (e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function (evt) {
-      const data = new Uint8Array(evt.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
-      const sheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[sheetName];
+// Fungsi Save PDF
+async function saveStrukToPDF() {
+  const { jsPDF } = window.jspdf;
+  const struk = document.querySelector(".struk-container");
 
-      document.getElementById("toko").value = sheet['B1']?.v || "";
-      document.getElementById("alamat").value = sheet['B2']?.v || "";
-      document.getElementById("kasir").value = sheet['B3']?.v || "";
+  const domClone = struk.cloneNode(true);
+  domClone.style.position = 'absolute';
+  domClone.style.top = '-9999px';
+  document.body.appendChild(domClone);
 
-      const cellTanggal = sheet['B4'];
-      if (cellTanggal && typeof cellTanggal.v === 'number') {
-        const parsedDate = XLSX.SSF.parse_date_code(cellTanggal.v);
-        const formattedDate = `${parsedDate.y}-${String(parsedDate.m).padStart(2, '0')}-${String(parsedDate.d).padStart(2, '0')}`;
-        document.getElementById("tanggal").value = formattedDate;
-      } else if (cellTanggal && typeof cellTanggal.v === 'string') {
-        const parts = cellTanggal.v.split('/');
-        if (parts.length === 3) {
-          const [d, m, y] = parts;
-          document.getElementById("tanggal").value = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-        }
+  const canvas = await html2canvas(domClone);
+  document.body.removeChild(domClone);
+
+  const imgData = canvas.toDataURL('image/png');
+  const pdfWidth = 56; // mm
+  const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+  const pdf = new jsPDF('p', 'mm', [pdfWidth, pdfHeight]);
+  pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+  pdf.save("struk-belanja.pdf");
+}
+
+function formatRupiah(angka) {
+  return angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
+function downloadTemplate() {
+  const now = new Date();
+  const defaultDate = getFormattedDate(now); // dd/mm/yyyy
+  const wb = XLSX.utils.book_new();
+  const wsData = [
+    ["Nama Toko", "Toko Serba Ada"],
+    ["Alamat Toko", "Jl. Raya No.123"],
+    ["Nama Kasir", "Andi"],
+    ["Tanggal", defaultDate],
+    [],
+    ["Barang", "Jumlah", "Harga"],
+    ["Roti Tawar Gandum Super Enak", "2", "12000"],
+    ["Susu Kotak Coklat Berkualitas Tinggi", "5", "5000"]
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [{wch:20}, {wch:10}, {wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws, "Struk");
+  XLSX.writeFile(wb, "template-struk-belanja.xlsx");
+}
+
+document.getElementById('excel').addEventListener('change', function (e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function (evt) {
+    const data = new Uint8Array(evt.target.result);
+    const workbook = XLSX.read(data, { type: 'array' });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    document.getElementById("toko").value = sheet['B1']?.v || "";
+    document.getElementById("alamat").value = sheet['B2']?.v || "";
+    document.getElementById("kasir").value = sheet['B3']?.v || "";
+    const cellTanggal = sheet['B4'];
+    if (cellTanggal && typeof cellTanggal.v === 'number') {
+      const parsedDate = XLSX.SSF.parse_date_code(cellTanggal.v);
+      const formattedDate = `${parsedDate.y}-${String(parsedDate.m).padStart(2, '0')}-${String(parsedDate.d).padStart(2, '0')}`;
+      document.getElementById("tanggal").value = formattedDate;
+    } else if (cellTanggal && typeof cellTanggal.v === 'string') {
+      const parts = cellTanggal.v.split('/');
+      if (parts.length === 3) {
+        const [d, m, y] = parts;
+        document.getElementById("tanggal").value = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
       }
-
-      const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-
-      document.getElementById('belanjaan-list').innerHTML = '';
-      itemCounter = 0;
-
-      for (let i = 6; i < jsonData.length; i++) {
-        const row = jsonData[i];
-        if (row && row.length >= 3 && row[0] && row[1] !== undefined && row[2] !== undefined) {
-          tambahBelanjaan();
-          const idx = itemCounter;
-          setTimeout(() => {
-            document.getElementById(`barang-${idx}`).value = row[0];     // Barang
-            document.getElementById(`jumlah-${idx}`).value = row[1];    // Jumlah
-            document.getElementById(`harga-${idx}`).value = row[2];    // Harga
-          }, 50);
-        }
+    }
+    const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+    document.getElementById('belanjaan-list').innerHTML = '';
+    itemCounter = 0;
+    for (let i = 6; i < jsonData.length; i++) {
+      const row = jsonData[i];
+      if (row && row.length >= 3 && row[0] && row[1] !== undefined && row[2] !== undefined) {
+        tambahBelanjaan();
+        const idx = itemCounter;
+        setTimeout(() => {
+          document.getElementById(`barang-${idx}`).value = row[0];     // Barang
+          document.getElementById(`jumlah-${idx}`).value = row[1];    // Jumlah
+          document.getElementById(`harga-${idx}`).value = row[2];    // Harga
+        }, 50);
       }
-    };
-    reader.readAsArrayBuffer(file);
-  });
+    }
+  };
+  reader.readAsArrayBuffer(file);
+});
 </script>
 </body>
 </html>
