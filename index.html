@@ -140,6 +140,7 @@
   </style>
 </head>
 <body>
+
 <div class="form-container">
   <h2>Input Data Struk Belanja</h2>
   <label for="toko">Nama Toko:</label>
@@ -157,14 +158,15 @@
   <button onclick="tambahBelanjaan()">Tambah Item</button>
   <button onclick="generateStruk()" style="background: green; color: white;">Tampilkan Struk</button>
   <button onclick="generateStrukAlternatif()" style="background: #007BFF; color: white;">Tampilkan Struk Alternatif</button>
-  <button id="printBtn" onclick="sendToECSPOS()" style="background: #007BFF; color: white;">🖨️ Cetak via Bluetooth</button>
+  <button id="printBtn" onclick="window.print()">🖨️ Cetak Struk</button>
 </div>
+
 <div class="struk-container" id="struk">
   <!-- Isi struk akan muncul di sini -->
 </div>
 
 <!-- SheetJS Library -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js  "></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js "></script>
 <script>
   let itemCounter = 0;
 
@@ -197,66 +199,11 @@
     itemCounter--;
   }
 
-  function formatRupiah(angka) {
-    return angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  }
-
-  function sendToECSPOS() {
-    const toko = document.getElementById("toko").value || "Toko ABCD";
-    const alamat = document.getElementById("alamat").value || "Jl. Raya No.123";
-    const kasir = document.getElementById("kasir").value || "Kasir Tidak Diketahui";
-    const tanggalInput = document.getElementById("tanggal").value;
-    let tanggal;
-    if (tanggalInput) {
-      const [year, month, day] = tanggalInput.split('-');
-      tanggal = `${day}/${month}/${year}`;
-    } else {
-      const now = new Date();
-      tanggal = getFormattedDate(now);
-    }
-
-    let itemsText = "";
-    let total = 0;
-
-    for (let i = 1; i <= itemCounter; i++) {
-      const barangEl = document.getElementById(`barang-${i}`);
-      const jumlahEl = document.getElementById(`jumlah-${i}`);
-      const hargaEl = document.getElementById(`harga-${i}`);
-      if (!barangEl || !jumlahEl || !hargaEl) continue;
-      const barang = barangEl.value.trim();
-      const jumlah = parseInt(jumlahEl.value) || 0;
-      const harga = parseInt(hargaEl.value) || 0;
-      if (barang && jumlah > 0 && harga >= 0) {
-        const subtotal = jumlah * harga;
-        total += subtotal;
-        itemsText += `${barang}\n${jumlah} x ${formatRupiah(harga)}\t\t${formatRupiah(subtotal)}\n`;
-      }
-    }
-
-    const strukText = `
-${toko}
-${alamat}
-Kasir: ${kasir}
-Tanggal: ${tanggal}
-----------------------------
-${itemsText}
-----------------------------
-Total: ${formatRupiah(total)}
-----------------------------
-Terima Kasih atas kunjungan Anda!
-`;
-
-    // Encode ke Base64 untuk dikirim via intent
-    const base64Struk = btoa(unescape(encodeURIComponent(strukText)));
-
-    // Kirim ke aplikasi ECS POS Print Service
-    window.location.href = `ezchartprint://print?text=${base64Struk}`;
-  }
-
   function generateStruk() {
     const toko = document.getElementById("toko").value || "Toko ABCD";
     const alamat = document.getElementById("alamat").value || "Jl. Raya No.123";
     const kasir = document.getElementById("kasir").value || "Kasir Tidak Diketahui";
+
     const tanggalInput = document.getElementById("tanggal").value;
     let tanggal;
     if (tanggalInput) {
@@ -325,6 +272,7 @@ Terima Kasih atas kunjungan Anda!
     const toko = document.getElementById("toko").value || "Toko ABCD";
     const alamat = document.getElementById("alamat").value || "Jl. Raya No.123";
     const kasir = document.getElementById("kasir").value || "Kasir Tidak Diketahui";
+
     const tanggalInput = document.getElementById("tanggal").value;
     let tanggal;
     if (tanggalInput) {
@@ -389,9 +337,14 @@ Terima Kasih atas kunjungan Anda!
     document.getElementById('printBtn').style.display = 'inline-block';
   }
 
+  function formatRupiah(angka) {
+    return angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
+
   function downloadTemplate() {
     const now = new Date();
     const defaultDate = getFormattedDate(now); // dd/mm/yyyy
+
     const wb = XLSX.utils.book_new();
     const wsData = [
       ["Nama Toko", "Toko Serba Ada"],
@@ -418,9 +371,11 @@ Terima Kasih atas kunjungan Anda!
       const workbook = XLSX.read(data, { type: 'array' });
       const sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
+
       document.getElementById("toko").value = sheet['B1']?.v || "";
       document.getElementById("alamat").value = sheet['B2']?.v || "";
       document.getElementById("kasir").value = sheet['B3']?.v || "";
+
       const cellTanggal = sheet['B4'];
       if (cellTanggal && typeof cellTanggal.v === 'number') {
         const parsedDate = XLSX.SSF.parse_date_code(cellTanggal.v);
@@ -433,9 +388,12 @@ Terima Kasih atas kunjungan Anda!
           document.getElementById("tanggal").value = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
         }
       }
+
       const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
       document.getElementById('belanjaan-list').innerHTML = '';
       itemCounter = 0;
+
       for (let i = 6; i < jsonData.length; i++) {
         const row = jsonData[i];
         if (row && row.length >= 3 && row[0] && row[1] !== undefined && row[2] !== undefined) {
