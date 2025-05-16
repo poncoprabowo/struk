@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#007BFF">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Struk Belanja - Toko</title>
@@ -14,7 +12,6 @@
       margin: 0;
       padding: 10px;
       background: #f4f4f4;
-      box-sizing: border-box;
     }
     .form-container {
       margin-bottom: 20px;
@@ -24,17 +21,13 @@
       width: 100%;
       max-width: 600px;
       margin: auto;
-      box-sizing: border-box;
     }
     label {
       display: block;
       margin-top: 10px;
       font-weight: bold;
     }
-    input[type="text"],
-    input[type="number"],
-    input[type="date"],
-    input[type="file"] {
+    input[type="text"], input[type="number"], input[type="date"], input[type="file"] {
       width: 100%;
       padding: 5px;
       margin-top: 5px;
@@ -71,45 +64,16 @@
       justify-content: space-between;
       align-items: flex-start;
     }
-    .item-name {
-      flex: 1 1 60%;
-      word-break: break-word;
-    }
-    .line {
-      border-top: 1px dashed #000;
-      margin: 2px 0;
-    }
-    .total-line {
-      border-top: 2px solid #000;
-      margin: 4px 0;
-    }
     .total-text {
       font-size: 16px;
       font-weight: bold;
       text-align: right;
     }
-    #printBtn {
+    #printBtn, #savePdfBtn {
       display: none;
       margin: 10px auto;
       background-color: #007BFF;
       color: white;
-      width: 100%;
-    }
-    #savePdfBtn {
-      display: none;
-      margin: 10px auto;
-      background-color: #f44336;
-      color: white;
-      width: 100%;
-    }
-    @media screen and (max-width: 600px) {
-      .struk-container {
-        font-size: 12px;
-        padding: 2mm;
-      }
-      input[type="text"], input[type="number"] {
-        font-size: 14px;
-      }
     }
     @media print {
       * {
@@ -129,24 +93,12 @@
         padding: 0mm 5mm;
         font-size: 12px;
         page-break-after: always;
-        box-sizing: border-box;
-      }
-      .total-text {
-        font-size: 14px;
-      }
-      h2 {
-        font-size: 14px;
-      }
-      .center strong {
-        font-size: 14px;
-      }
-      .item-row div {
-        font-size: 12px;
       }
     }
   </style>
 </head>
 <body>
+
 <div class="form-container">
   <h2>Input Data Struk Belanja</h2>
   <label for="toko">Nama Toko:</label>
@@ -167,6 +119,7 @@
   <button id="printBtn" onclick="window.print()">🖨️ Cetak Struk</button>
   <button id="savePdfBtn" onclick="saveStrukToPDF()">💾 Simpan Struk sebagai PDF</button>
 </div>
+
 <div class="struk-container" id="struk">
   <!-- Isi struk akan muncul di sini -->
 </div>
@@ -182,7 +135,7 @@
 
   function getFormattedDate(date) {
     const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0'); // bulan dimulai dari 0
+    const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
   }
@@ -209,19 +162,131 @@
     itemCounter--;
   }
 
-  function generateStruk() {
-    showPrintAndSaveButtons();
-    // ... (isi fungsi generateStruk tetap sama)
-  }
-
-  function generateStrukAlternatif() {
-    showPrintAndSaveButtons();
-    // ... (isi fungsi generateStrukAlternatif tetap sama)
-  }
-
   function showPrintAndSaveButtons() {
     document.getElementById('printBtn').style.display = 'inline-block';
     document.getElementById('savePdfBtn').style.display = 'inline-block';
+  }
+
+  function generateStruk() {
+    const toko = document.getElementById("toko").value || "Toko ABCD";
+    const alamat = document.getElementById("alamat").value || "Jl. Raya No.123";
+    const kasir = document.getElementById("kasir").value || "Kasir Tidak Diketahui";
+    const tanggalInput = document.getElementById("tanggal").value;
+    let tanggal = "";
+    if (tanggalInput) {
+      const [year, month, day] = tanggalInput.split('-');
+      tanggal = `${day}/${month}/${year}`;
+    } else {
+      const now = new Date();
+      tanggal = getFormattedDate(now);
+    }
+
+    let itemsHTML = '';
+    let total = 0;
+
+    for (let i = 1; i <= itemCounter; i++) {
+      const barang = document.getElementById(`barang-${i}`)?.value.trim();
+      const jumlah = parseInt(document.getElementById(`jumlah-${i}`)?.value) || 0;
+      const harga = parseInt(document.getElementById(`harga-${i}`)?.value) || 0;
+
+      if (barang && jumlah > 0 && harga >= 0) {
+        const subtotal = jumlah * harga;
+        total += subtotal;
+        itemsHTML += `
+          <div class="item-block">
+            <div class="item-row">
+              <div>${barang}</div>
+            </div>
+            <div class="item-row">
+              <div>${jumlah} x Rp${formatRupiah(harga)}</div>
+              <div>Rp${formatRupiah(subtotal)}</div>
+            </div>
+            <div style="border-top:1px dashed black;"></div>
+          </div>`;
+      }
+    }
+
+    const strukHTML = `
+      <div class="center">
+        <strong>${toko}</strong><br>
+        ${alamat}<br>
+        Kasir: ${kasir}<br>
+        Tgl: ${tanggal}<br>
+        ----------------------------
+      </div>
+      ${itemsHTML}
+      <div style="border-top:2px solid black;margin:4px 0;"></div>
+      <div style="text-align:right;font-weight:bold;">Total: Rp${formatRupiah(total)}</div>
+      <div style="border-top:2px solid black;margin:4px 0;"></div>
+      <div class="center">
+        Terima Kasih<br>
+        atas kunjungan Anda!
+      </div>
+    `;
+
+    document.getElementById('struk').innerHTML = strukHTML;
+    showPrintAndSaveButtons();
+  }
+
+  function generateStrukAlternatif() {
+    const toko = document.getElementById("toko").value || "Toko ABCD";
+    const alamat = document.getElementById("alamat").value || "Jl. Raya No.123";
+    const kasir = document.getElementById("kasir").value || "Kasir Tidak Diketahui";
+    const tanggalInput = document.getElementById("tanggal").value;
+    let tanggal = "";
+    if (tanggalInput) {
+      const [year, month, day] = tanggalInput.split('-');
+      tanggal = `${day}/${month}/${year}`;
+    } else {
+      const now = new Date();
+      tanggal = getFormattedDate(now);
+    }
+
+    let itemsHTML = '';
+    let total = 0;
+
+    for (let i = 1; i <= itemCounter; i++) {
+      const barang = document.getElementById(`barang-${i}`)?.value.trim();
+      const jumlah = parseInt(document.getElementById(`jumlah-${i}`)?.value) || 0;
+      const harga = parseInt(document.getElementById(`harga-${i}`)?.value) || 0;
+
+      if (barang && jumlah > 0 && harga >= 0) {
+        const subtotal = jumlah * harga;
+        total += subtotal;
+        itemsHTML += `
+          <div class="item-block">
+            <div class="item-row">
+              <div>${barang}</div>
+            </div>
+            <div class="item-row">
+              <div>${jumlah}</div>
+              <div>Rp${formatRupiah(subtotal)}</div>
+            </div>
+            <div style="border-top:1px dashed black;"></div>
+          </div>`;
+      }
+    }
+
+    const strukHTML = `
+      <div class="center">
+        ${toko}<br>
+        ${alamat}<br>
+        Kasir: ${kasir}<br>
+        Tanggal: ${tanggal}<br>
+        ========================
+      </div>
+      ${itemsHTML}
+      <div style="border-top:2px solid black;margin:4px 0;"></div>
+      <div style="text-align:right;font-weight:bold;">Total: Rp${formatRupiah(total)}</div>
+      <div style="border-top:2px solid black;margin:4px 0;"></div>
+      <div class="center">
+        Terima Kasih<br>
+        atas kunjungan Anda!
+      </div>
+    `;
+
+    document.getElementById('struk').innerHTML = strukHTML;
+    showPrintAndSaveButtons();
   }
 
   function formatRupiah(angka) {
@@ -231,20 +296,17 @@
   function saveStrukToPDF() {
     const element = document.getElementById('struk');
 
-    // Clone untuk menghindari perubahan DOM asli
+    // Hapus tombol jika ada dalam clone
     const clone = element.cloneNode(true);
-
-    // Hapus tombol jika ada di struk
     const buttons = clone.querySelectorAll("button");
     buttons.forEach(btn => btn.remove());
 
-    // Opsi PDF
     const opt = {
-      margin:       [0, 0],
-      filename:     'struk-belanja.pdf',
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2 },
-      jsPDF:        { unit: 'mm', format: [58, 297], orientation: 'portrait' }
+      margin: [0, 0],
+      filename: 'struk-belanja.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'mm', format: [58, 297], orientation: 'portrait' }
     };
 
     html2pdf().set(opt).from(clone).save();
@@ -252,7 +314,7 @@
 
   function downloadTemplate() {
     const now = new Date();
-    const defaultDate = getFormattedDate(now); // dd/mm/yyyy
+    const defaultDate = getFormattedDate(now);
     const wb = XLSX.utils.book_new();
     const wsData = [
       ["Nama Toko", "Toko Serba Ada"],
@@ -265,7 +327,6 @@
       ["Susu Kotak Coklat Berkualitas Tinggi", "5", "5000"]
     ];
     const ws = XLSX.utils.aoa_to_sheet(wsData);
-    ws['!cols'] = [{wch:20}, {wch:10}, {wch:12}];
     XLSX.utils.book_append_sheet(wb, ws, "Struk");
     XLSX.writeFile(wb, "template-struk-belanja.xlsx");
   }
@@ -279,13 +340,15 @@
       const workbook = XLSX.read(data, { type: 'array' });
       const sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
+
       document.getElementById("toko").value = sheet['B1']?.v || "";
       document.getElementById("alamat").value = sheet['B2']?.v || "";
       document.getElementById("kasir").value = sheet['B3']?.v || "";
+
       const cellTanggal = sheet['B4'];
       if (cellTanggal && typeof cellTanggal.v === 'number') {
         const parsedDate = XLSX.SSF.parse_date_code(cellTanggal.v);
-        const formattedDate = `${parsedDate.y}-${String(parsedDate.m).padStart(2, '0')}-${String(parsedDate.d).padStart(2, '0')}`;
+        const formattedDate = `${parsedDate.d}/${parsedDate.m}/${parsedDate.y}`;
         document.getElementById("tanggal").value = formattedDate;
       } else if (cellTanggal && typeof cellTanggal.v === 'string') {
         const parts = cellTanggal.v.split('/');
@@ -294,6 +357,7 @@
           document.getElementById("tanggal").value = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
         }
       }
+
       const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
       document.getElementById('belanjaan-list').innerHTML = '';
       itemCounter = 0;
@@ -303,9 +367,9 @@
           tambahBelanjaan();
           const idx = itemCounter;
           setTimeout(() => {
-            document.getElementById(`barang-${idx}`).value = row[0];     // Barang
-            document.getElementById(`jumlah-${idx}`).value = row[1];    // Jumlah
-            document.getElementById(`harga-${idx}`).value = row[2];    // Harga
+            document.getElementById(`barang-${idx}`).value = row[0];
+            document.getElementById(`jumlah-${idx}`).value = row[1];
+            document.getElementById(`harga-${idx}`).value = row[2];
           }, 50);
         }
       }
@@ -313,5 +377,6 @@
     reader.readAsArrayBuffer(file);
   });
 </script>
+
 </body>
 </html>
