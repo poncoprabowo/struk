@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Struk Belanja - Toko</title>
+
+  <!-- CSS Sederhana -->
+  <style>
+    body {
+      font-family: monospace;
+      font-size: 14px;
+      margin: 0;
+      padding: 10px;
+      background: #fff;
+    }
+
+    .container {
+      max-width: 500px;
+      margin: auto;
+    }
+
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 8px;
+      font-size: 14px;
+    }
+
+    label {
+      display: block;
+      margin-top: 12px;
+      font-weight: bold;
+    }
+
+    #struk {
+      margin-top: 20px;
+      white-space: pre-wrap;
+      background: #f9f9f9;
+      border: 1px solid #ccc;
+      padding: 10px;
+      font-size: 13px;
+    }
+
+    @media print {
+      body * {
+        visibility: hidden !important;
+      }
+      #struk, #struk * {
+        visibility: visible !important;
+      }
+      #struk {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 58mm;
+        font-size: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h2>Input Struk Belanja</h2>
+
+  <label>Nama Toko:</label>
+  <input type="text" id="toko" placeholder="Nama toko">
+
+  <label>Alamat Toko:</label>
+  <input type="text" id="alamat" placeholder="Alamat toko">
+
+  <label>Nama Kasir:</label>
+  <input type="text" id="kasir" placeholder="Nama kasir">
+
+  <label>Tanggal:</label>
+  <input type="date" id="tanggal">
+
+  <div id="belanjaan-list"></div>
+
+  <button onclick="tambahBelanjaan()">Tambah Item</button>
+  <button onclick="generateStruk()" style="background:#28a745;color:white;">Tampilkan Struk</button>
+  <button onclick="window.print()" style="background:#007bff;color:white;">🖨️ Cetak</button>
+  <button onclick="saveToPDF()" style="background:#dc3545;color:white;">💾 Simpan PDF</button>
+</div>
+
+<div id="struk" style="display:none;"></div>
+
+<!-- Library html2pdf -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js "></script>
+
+<script>
+  let itemCounter = 0;
+
+  function tambahBelanjaan() {
+    itemCounter++;
+    const list = document.getElementById('belanjaan-list');
+    const div = document.createElement('div');
+    div.id = 'item-' + itemCounter;
+    div.innerHTML = `
+      <label>Barang ${itemCounter}:</label>
+      <input type="text" id="barang-${itemCounter}" placeholder="Nama barang">
+      <input type="number" id="jumlah-${itemCounter}" placeholder="Jumlah" min="1" style="width: 100%;">
+      <input type="number" id="harga-${itemCounter}" placeholder="Harga" min="0" style="width: 100%;">
+    `;
+    list.appendChild(div);
+  }
+
+  function formatRupiah(angka) {
+    return angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
+
+  function generateStruk() {
+    const toko = document.getElementById("toko").value || "Toko ABCD";
+    const alamat = document.getElementById("alamat").value || "Jl. Raya No.123";
+    const kasir = document.getElementById("kasir").value || "Kasir";
+    const tanggal = document.getElementById("tanggal").value || new Date().toISOString().split('T')[0];
+
+    let strukText = `=========================\n`;
+    strukText += `${toko}\n${alamat}\nKasir: ${kasir}\nTanggal: ${tanggal}\n`;
+    strukText += `=========================\n`;
+
+    let total = 0;
+    for (let i = 1; i <= itemCounter; i++) {
+      const barang = document.getElementById(`barang-${i}`)?.value.trim();
+      const jumlah = parseInt(document.getElementById(`jumlah-${i}`)?.value) || 0;
+      const harga = parseInt(document.getElementById(`harga-${i}`)?.value) || 0;
+      if (barang && jumlah > 0 && harga >= 0) {
+        const subtotal = jumlah * harga;
+        total += subtotal;
+        strukText += `${barang}\n${jumlah} x Rp${formatRupiah(harga)}\nRp${formatRupiah(subtotal)}\n--------------------\n`;
+      }
+    }
+
+    strukText += `\nTotal: Rp${formatRupiah(total)}\n`;
+    strukText += `=========================\n`;
+    strukText += `Terima Kasih\natas kunjungan Anda!`;
+
+    document.getElementById('struk').textContent = strukText;
+    document.getElementById('struk').style.display = 'block';
+  }
+
+  function saveToPDF() {
+    const element = document.getElementById('struk');
+
+    // Clone untuk PDF
+    const clone = document.createElement('div');
+    clone.style.whiteSpace = 'pre-wrap';
+    clone.style.fontSize = '10px';
+    clone.textContent = element.textContent;
+
+    setTimeout(() => {
+      const opt = {
+        margin: [0, 0],
+        filename: 'struk-belanja.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: [58, 297], orientation: 'portrait' }
+      };
+      html2pdf().set(opt).from(clone).save();
+    }, 500);
+  }
+</script>
+</body>
+</html>
