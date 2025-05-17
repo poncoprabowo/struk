@@ -61,6 +61,12 @@
     .center {
       text-align: center;
     }
+    .logo {
+      display: block;
+      max-width: 80px;
+      max-height: 60px;
+      margin: 0 auto 5px auto;
+    }
     .item-block {
       display: flex;
       flex-direction: column;
@@ -151,6 +157,9 @@
   <input type="text" id="kasir" placeholder="Masukkan nama kasir">
   <label for="tanggal">Tanggal:</label>
   <input type="date" id="tanggal">
+  <label for="logo">Upload Logo:</label>
+  <input type="file" id="logo" accept="image/*">
+  <img id="previewLogo" style="max-width: 100px; margin-top: 5px; display: none;" />
   <label for="excel">Upload Excel:</label>
   <input type="file" id="excel" accept=".xlsx, .xls" />
   <button onclick="downloadTemplate()" style="background: #4CAF50; color: white;">📥 Download Template Excel</button>
@@ -166,9 +175,26 @@
 </div>
 
 <!-- SheetJS Library -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js "></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js  "></script>
 <script>
   let itemCounter = 0;
+
+  document.getElementById('logo').addEventListener('change', function (e) {
+    const file = e.target.files[0];
+    const preview = document.getElementById('previewLogo');
+    if (!file) {
+      preview.src = '';
+      preview.style.display = 'none';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function (evt) {
+      preview.src = evt.target.result;
+      preview.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  });
 
   function getFormattedDate(date) {
     const day = String(date.getDate()).padStart(2, '0');
@@ -203,7 +229,6 @@
     const toko = document.getElementById("toko").value || "Toko ABCD";
     const alamat = document.getElementById("alamat").value || "Jl. Raya No.123";
     const kasir = document.getElementById("kasir").value || "Kasir Tidak Diketahui";
-
     const tanggalInput = document.getElementById("tanggal").value;
     let tanggal;
     if (tanggalInput) {
@@ -216,7 +241,6 @@
 
     let itemsHTML = '';
     let total = 0;
-
     for (let i = 1; i <= itemCounter; i++) {
       const barangEl = document.getElementById(`barang-${i}`);
       const jumlahEl = document.getElementById(`jumlah-${i}`);
@@ -242,15 +266,21 @@
         `;
       }
     }
-
     itemsHTML += `
       <div class="total-line"></div>
       <div class="total-text">Total: ${formatRupiah(total)}</div>
       <div class="total-line"></div>
     `;
 
+    const previewLogo = document.getElementById('previewLogo');
+    let logoHTML = '';
+    if (previewLogo.src) {
+      logoHTML = `<img class="logo" src="${previewLogo.src}"><br>`;
+    }
+
     const strukHTML = `
       <div class="center">
+        ${logoHTML}
         <strong>${toko}</strong><br>
         ${alamat}<br>
         Kasir: ${kasir}<br>
@@ -263,7 +293,6 @@
         atas kunjungan Anda!
       </div>
     `;
-
     document.getElementById('struk').innerHTML = strukHTML;
     document.getElementById('printBtn').style.display = 'inline-block';
   }
@@ -272,7 +301,6 @@
     const toko = document.getElementById("toko").value || "Toko ABCD";
     const alamat = document.getElementById("alamat").value || "Jl. Raya No.123";
     const kasir = document.getElementById("kasir").value || "Kasir Tidak Diketahui";
-
     const tanggalInput = document.getElementById("tanggal").value;
     let tanggal;
     if (tanggalInput) {
@@ -285,7 +313,6 @@
 
     let itemsHTML = '';
     let total = 0;
-
     for (let i = 1; i <= itemCounter; i++) {
       const barangEl = document.getElementById(`barang-${i}`);
       const jumlahEl = document.getElementById(`jumlah-${i}`);
@@ -311,15 +338,21 @@
         `;
       }
     }
-
     itemsHTML += `
       <div class="total-line"></div>
       <div class="total-text">Total: ${formatRupiah(total)}</div>
       <div class="total-line"></div>
     `;
 
+    const previewLogo = document.getElementById('previewLogo');
+    let logoHTML = '';
+    if (previewLogo.src) {
+      logoHTML = `<img class="logo" src="${previewLogo.src}"><br>`;
+    }
+
     const strukHTML = `
       <div class="center">
+        ${logoHTML}
         ${toko}<br>
         ${alamat}<br>
         Kasir: ${kasir}<br>
@@ -332,7 +365,6 @@
         atas kunjungan Anda!
       </div>
     `;
-
     document.getElementById('struk').innerHTML = strukHTML;
     document.getElementById('printBtn').style.display = 'inline-block';
   }
@@ -344,7 +376,6 @@
   function downloadTemplate() {
     const now = new Date();
     const defaultDate = getFormattedDate(now); // dd/mm/yyyy
-
     const wb = XLSX.utils.book_new();
     const wsData = [
       ["Nama Toko", "Toko Serba Ada"],
@@ -371,11 +402,9 @@
       const workbook = XLSX.read(data, { type: 'array' });
       const sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
-
       document.getElementById("toko").value = sheet['B1']?.v || "";
       document.getElementById("alamat").value = sheet['B2']?.v || "";
       document.getElementById("kasir").value = sheet['B3']?.v || "";
-
       const cellTanggal = sheet['B4'];
       if (cellTanggal && typeof cellTanggal.v === 'number') {
         const parsedDate = XLSX.SSF.parse_date_code(cellTanggal.v);
@@ -388,12 +417,9 @@
           document.getElementById("tanggal").value = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
         }
       }
-
       const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-
       document.getElementById('belanjaan-list').innerHTML = '';
       itemCounter = 0;
-
       for (let i = 6; i < jsonData.length; i++) {
         const row = jsonData[i];
         if (row && row.length >= 3 && row[0] && row[1] !== undefined && row[2] !== undefined) {
